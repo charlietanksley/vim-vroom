@@ -199,3 +199,63 @@ function s:SetColorFlag()
     let s:color_flag = " --no-color"
   endif
 endfunction
+
+
+""" Stuff to look into adding in:
+
+function vroom#RunTestFileDrb()
+  call s:RunTestFileDrb()
+endfunction
+
+function vroom#RunNearestTestDrb()
+  call s:RunNearestTestDrb()
+endfunction
+
+" Internal: Runs the current file as a test. Also saves the current file, so
+" next time the function is called in a non-test file, it runs the last test
+"
+" suffix - An optional command suffix
+function s:RunTestFileDrb(...)
+  if a:0
+    let command_suffix = a:1
+  else
+    let command_suffix = ""
+  endif
+
+  " Run the tests for the previously-marked file.
+  let in_test_file = match(expand("%"), '\(.feature\|_spec.rb\|_test.rb\)$') != -1
+
+  if in_test_file
+    call s:SetTestFile()
+  elseif !exists("t:vroom_test_file")
+    return
+  end
+  call s:RunTestsDrb(t:vroom_test_file . command_suffix)
+endfunction
+
+" Internal: Runs the current or last test with the currently selected line
+" number
+function s:RunNearestTestDrb()
+  let spec_line_number = line('.')
+  call s:RunTestFileDrb(":" . spec_line_number)
+endfunction
+
+" Internal: Runs the test for a given filename
+function s:RunTestsDrb(filename)
+  if ! g:vroom_use_vimux
+    call s:ClearScreen()
+  end
+
+  call s:WriteOrWriteAll()
+  call s:SetTestRunnerPrefix()
+  call s:SetColorFlag()
+  " Run the right test for the given file
+  if match(a:filename, '_spec.rb') != -1
+    call s:Run(s:test_runner_prefix ."rspec " . a:filename . s:color_flag . ' --drb')
+  elseif match(a:filename, '\.feature') != -1
+    call s:Run(s:test_runner_prefix .g:vroom_cucumber_path . a:filename . s:color_flag . ' --drb')
+  elseif match(a:filename, "_test.rb") != -1
+    call s:Run(s:test_runner_prefix ."ruby -Itest " . a:filename)
+  end
+endfunction
+
